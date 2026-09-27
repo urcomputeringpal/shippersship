@@ -18,7 +18,7 @@ public struct Pipeline: Hashable, Sendable {
     public var deploy: StepStatus
 }
 
-public enum StatusKind: String, Hashable, Sendable {
+public enum StatusKind: String, Hashable, Sendable, CaseIterable {
     case draft, reviewRequested, awaitingReview, changesRequested
     case ciFailing, ciRunning, conflicts, behind, blocked, unresolved
     case ready, queued, queueFailed

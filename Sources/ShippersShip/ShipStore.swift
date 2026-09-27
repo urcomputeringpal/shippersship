@@ -285,26 +285,34 @@ final class ShipStore {
 
     // MARK: - Notifications
 
-    /// Kinds worth interrupting for when a PR moves into them.
-    private static let notableKinds: Set<StatusKind> = [
-        .reviewRequested, .changesRequested, .ciFailing, .conflicts, .ready,
-        .queueFailed, .merged, .deployed, .deployFailed,
-    ]
-
+    /// Posts and clears notifications so each PR shows at most one, reflecting its latest status.
     private func notifyTransitions(_ newEntries: [Entry]) {
         let kinds = Dictionary(newEntries.map { ($0.id, $0.status.kind) }, uniquingKeysWith: { a, _ in a })
         defer { previousKinds = kinds }
         // Stay quiet on the first load so launching the app doesn't spam.
-        guard let previous = previousKinds,
-              UserDefaults.standard.bool(forKey: Prefs.notifications) else { return }
+        guard let previous = previousKinds else {
+            Notifier.clearLegacy()
+            return
+        }
 
-        for entry in newEntries where group(for: entry.pr)?.quiet != true {
-            let kind = entry.status.kind
-            guard Self.notableKinds.contains(kind), previous[entry.id] != kind else { continue }
-            // A reviewer only cares about new review requests and failures on PRs they merged.
-            if !entry.pr.relations.contains(.authored), !entry.status.needsAttention { continue }
+        let candidates = newEntries.map { entry in
+            NotificationPlanner.Candidate(
+                id: entry.id,
+                kind: entry.status.kind,
+                // Quiet groups never notify. A reviewer only hears about PRs that need them.
+                eligible: group(for: entry.pr)?.quiet != true
+                    && (entry.pr.relations.contains(.authored) || entry.status.needsAttention)
+            )
+        }
+        let plan = NotificationPlanner.plan(previous: previous, current: candidates)
+        Notifier.clear(ids: plan.clear)
+
+        guard UserDefaults.standard.bool(forKey: Prefs.notifications) else { return }
+        let byID = Dictionary(newEntries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for id in plan.post {
+            guard let entry = byID[id] else { continue }
             Notifier.post(
-                id: "\(entry.id)-\(kind.rawValue)",
+                id: entry.id,
                 title: entry.status.headline,
                 subtitle: "\(entry.pr.repo)#\(entry.pr.number)",
                 body: entry.pr.title,
@@ -323,13 +331,34 @@ enum Notifier {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
+    /// Posts a notification keyed by PR: one with the same `id` already in Notification Center is replaced.
     static func post(id: String, title: String, subtitle: String, body: String, url: URL) {
         guard available else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.subtitle = subtitle
         content.body = body
+        content.threadIdentifier = id
         content.userInfo = ["url": url.absoluteString]
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+    }
+
+    /// Removes notifications from versions that keyed them by PR *and* status (`<pr id>-<kind>`),
+    /// which the per-PR clearing above would never match.
+    static func clearLegacy() {
+        guard available else { return }
+        let suffixes = StatusKind.allCases.map { "-\($0.rawValue)" }
+        UNUserNotificationCenter.current().getDeliveredNotifications { delivered in
+            let legacy = delivered.map(\.request.identifier).filter { id in suffixes.contains { id.hasSuffix($0) } }
+            if !legacy.isEmpty {
+                UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: legacy)
+            }
+        }
+    }
+
+    /// Removes delivered notifications for these PRs.
+    static func clear(ids: [String]) {
+        guard available, !ids.isEmpty else { return }
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
     }
 }
