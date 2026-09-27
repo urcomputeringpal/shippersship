@@ -127,6 +127,7 @@ public struct ShipStatus: Hashable, Sendable {
             case .active:
                 return (.deploying, deployingHeadline(pr, now: now), by, .progress, false)
             case .done:
+                if pr.isLive { return (.deployed, "Live on \(pr.liveEnvironments.joined(separator: ", "))", by, .good, false) }
                 return (.deployed, "Deployed to \(envs(pr.deployments))", by, .good, false)
             default:
                 return (.merged, by, nil, .good, false)

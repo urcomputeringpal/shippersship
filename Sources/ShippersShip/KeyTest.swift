@@ -55,7 +55,8 @@ enum KeyTest {
 
         print("Section order")
         check(store.sections.first?.id == "watching", "Worth watching is the first section")
-        check(store.watching.map { $0.status.kind } == [.deploying, .queued], "deploying comes before queued")
+        check(store.watching.map(\.pr.number) == [475, 486, 489, 474], "deploying, then queued, then live (newest first)")
+        check(store.watching.contains { $0.pr.isOpen && $0.pr.isLive }, "open PRs live on an environment are worth watching")
         check(!store.landed.contains { $0.status.kind == .deploying }, "deploying PRs aren't also in Landed")
         check(!store.authored.contains { $0.status.kind == .queued }, "queued PRs aren't also in Your PRs")
         let ids = store.sections.map(\.id)

@@ -146,7 +146,7 @@ func liveSnapshot() async throws {
         let p = s.pipeline
         print(String(format: "%@ %-38@ %@ | R:%@ C:%@ M:%@ D:%@ | %@",
                      s.needsAttention ? "!" : " ", "\(pr.repo)#\(pr.number)" as NSString, s.headline,
-                     "\(p.review)", "\(p.checks)", "\(p.merge)", "\(p.deploy)", pr.relations.map(\.rawValue).sorted().joined(separator: ",")))
+                     "\(p.review)", "\(p.checks)", "\(p.merge)", "\(p.deploy)", pr.relations.map(\.rawValue).sorted().joined(separator: ",") + (pr.isLive ? " LIVE[\(pr.liveEnvironments.joined(separator: ","))]" : "")))
     }
 }
 
@@ -196,4 +196,30 @@ func liveSnapshot() async throws {
     let run = GQL.Context(__typename: "CheckRun", name: "build", status: "COMPLETED", conclusion: "FAILURE",
                           detailsUrl: URL(string: "https://ci.example.com/1"), context: nil, state: nil, targetUrl: nil)
     #expect(run.checkItem.url?.host == "ci.example.com")
+}
+
+@Test func liveIsNewestSuccessfulDeployPerEnvironment() {
+    func node(_ env: String, _ commit: String, _ minutesAgo: Double, _ state: String?) -> GitHubClient.LiveNode {
+        GitHubClient.LiveNode(environment: env, commitOid: commit, createdAt: Date().addingTimeInterval(-minutesAgo * 60),
+                              latestStatus: state.map(GitHubClient.LiveNode.Status.init))
+    }
+    let live = GitHubClient.liveCommits(from: [
+        node("prod", "a", 60, "SUCCESS"),
+        node("prod", "b", 30, "SUCCESS"),   // newest success wins…
+        node("prod", "c", 10, "FAILURE"),   // …failures don't replace it…
+        node("prod", "d", 5, "IN_PROGRESS"), // …nor does a deploy still running
+        node("staging", "e", 20, "SUCCESS"),
+    ])
+    #expect(live == ["prod": "b", "staging": "e"])
+
+    let pr = PullRequest(id: "1", number: 1, title: "t", url: URL(string: "https://github.com/o/r/pull/1")!, repo: "o/r",
+                         author: "me", state: "MERGED", deployments: [
+                             Deployment(environment: "prod", state: "SUCCESS", environmentURL: nil, logURL: nil, updatedAt: .now, commitOID: "b"),
+                             Deployment(environment: "staging", state: "SUCCESS", environmentURL: nil, logURL: nil, updatedAt: .now, commitOID: "old"),
+                         ])
+    #expect(pr.liveEnvironments(liveCommits: live) == ["prod"])
+
+    var livePR = pr
+    livePR.liveEnvironments = ["prod"]
+    #expect(ShipStatus(for: livePR).headline == "Live on prod")
 }

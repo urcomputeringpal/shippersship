@@ -3,7 +3,7 @@ import Foundation
 public struct GitHubClient: Sendable {
     public struct Snapshot: Sendable {
         public let viewer: String
-        public let pullRequests: [PullRequest]
+        public internal(set) var pullRequests: [PullRequest]
         public let rateLimitRemaining: Int?
     }
 
@@ -46,7 +46,18 @@ public struct GitHubClient: Sendable {
         async let reviewed = search("\(open) reviewed-by:@me -author:@me")
         async let merged = search("is:pr is:merged involves:@me merged:>=\(sinceString)")
         let results = try await (authored, requested, reviewed, merged)
-        return Self.merge(authored: results.0, requested: results.1, reviewed: results.2, merged: results.3)
+        var snapshot = Self.merge(authored: results.0, requested: results.1, reviewed: results.2, merged: results.3)
+
+        // Work out what's live. Best effort: if this fails, PRs just don't get marked live.
+        let repos = Set(snapshot.pullRequests.filter { !$0.deployments.isEmpty }.map(\.repo)).sorted()
+        if let live = try? await liveCommits(repos: repos) {
+            snapshot.pullRequests = snapshot.pullRequests.map { pr in
+                var pr = pr
+                pr.liveEnvironments = pr.liveEnvironments(liveCommits: live[pr.repo] ?? [:])
+                return pr
+            }
+        }
+        return snapshot
     }
 
     private func search(_ q: String) async throws -> GQL.Body {

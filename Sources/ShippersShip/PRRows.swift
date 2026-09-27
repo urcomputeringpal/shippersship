@@ -195,7 +195,7 @@ struct CompactPRRow: View {
 
     private var symbol: String {
         switch status.kind {
-        case .deployed: "checkmark.circle.fill"
+        case .deployed: pr.isLive ? "dot.radiowaves.left.and.right" : "checkmark.circle.fill"
         case .deploying: "arrow.up.circle.fill"
         case .deployFailed: "xmark.octagon.fill"
         default: "arrow.triangle.merge"
@@ -205,6 +205,9 @@ struct CompactPRRow: View {
     /// Environments are listed in the tooltip; the row keeps just the state.
     private var shortStatus: String {
         let n = pr.deployments.count > 1 ? " ×\(pr.deployments.count)" : ""
+        if pr.isLive, status.kind == .deployed {
+            return pr.liveEnvironments.count > 1 ? "live ×\(pr.liveEnvironments.count)" : "live"
+        }
         switch status.kind {
         case .deployed: return "deployed\(n)"
         case .deploying: return "deploying\(n)"
@@ -291,6 +294,15 @@ struct Badges: View {
 
     var body: some View {
         HStack(spacing: 6) {
+            if pr.isLive {
+                Text("LIVE")
+                    .font(.system(size: 9, weight: .heavy))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .foregroundStyle(.white)
+                    .background(Capsule().fill(.green))
+                    .help("Live on " + pr.liveEnvironments.joined(separator: ", "))
+            }
             if pr.unresolvedThreads > 0 {
                 Label("\(pr.unresolvedThreads)", systemImage: "text.bubble.fill")
                     .foregroundStyle(.orange)

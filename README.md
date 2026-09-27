@@ -8,7 +8,7 @@ Shippers Ship watches the PRs you **wrote**, the ones **waiting on your review**
 
 The panel is sorted by urgency:
 
-- **Worth watching 👀**: PRs shipping right now. Deploys in progress come first, then PRs in the merge queue by position. Nothing to do but keep an eye on them.
+- **Worth watching 👀**: PRs shipping right now. Deploys in progress (or queued) come first, then PRs in the merge queue by position, then PRs that are **live** in an environment, newest first. Nothing to do but keep an eye on them.
 - **Needs you**: anything waiting on *you*: failing CI, changes requested, conflicts, unresolved threads, review requests, PRs ready to merge, failed deploys. The menu bar icon shows how many.
 - **Your PRs**, **Reviewing**, **Drafts**: everything else that's open.
 - Your **groups** (see below).
@@ -76,6 +76,7 @@ Refresh interval, how far back to show landed PRs, hiding open PRs with no recen
 
 ## Notes
 
+- **Live** means the PR's commit is the newest successful deployment in that environment. GitHub's own `ACTIVE` deployment state isn't used, because many deploy tools never mark older deployments inactive. Live PRs get a **LIVE** badge; if one also needs you (failing CI, say), it stays in Needs you.
 - **Deployments** come from GitHub's Deployments API (deployments of the merge commit, plus "deployed" events on the PR). Repos that deploy some other way show the Deploy stage as n/a.
 - Shippers Ship runs four GitHub searches per refresh (authored, review-requested, reviewed, recently merged), 25 results each. Batching them into one query tends to time out.
 

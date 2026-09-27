@@ -132,6 +132,8 @@ public struct PullRequest: Identifiable, Hashable, Sendable {
     public let requestedReviewers: [String]
     public let deployments: [Deployment]
     public var relations: Set<Relation>
+    /// Environments where this PR's code is live right now (see `GitHubClient.liveCommits`).
+    public var liveEnvironments: [String]
 
     public init(
         id: String, number: Int, title: String, url: URL, repo: String, author: String,
@@ -142,7 +144,7 @@ public struct PullRequest: Identifiable, Hashable, Sendable {
         checks: ChecksSummary = ChecksSummary(rollup: nil, items: []),
         unresolvedThreads: Int = 0, totalComments: Int = 0, lastCommenter: String? = nil,
         approvals: [String] = [], changesRequestedBy: [String] = [], requestedReviewers: [String] = [],
-        deployments: [Deployment] = [], relations: Set<Relation> = []
+        deployments: [Deployment] = [], relations: Set<Relation> = [], liveEnvironments: [String] = []
     ) {
         self.id = id
         self.number = number
@@ -172,6 +174,14 @@ public struct PullRequest: Identifiable, Hashable, Sendable {
         self.requestedReviewers = requestedReviewers
         self.deployments = deployments
         self.relations = relations
+        self.liveEnvironments = liveEnvironments
+    }
+
+    public var isLive: Bool { !liveEnvironments.isEmpty }
+
+    /// When the newest of its live deployments happened, for ordering.
+    public var liveSince: Date? {
+        relevantDeployments.filter { liveEnvironments.contains($0.environment) }.map(\.updatedAt).max()
     }
 
     public var isMerged: Bool { state == "MERGED" }

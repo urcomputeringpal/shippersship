@@ -52,14 +52,19 @@ final class ShipStore {
     private var loop: Task<Void, Never>?
     private var previousKinds: [String: StatusKind]?
 
-    /// Moving on its own: deploying right now first, then in the merge queue by position.
+    /// Worth keeping an eye on: deploying right now, then in the merge queue by position,
+    /// then live in an environment (newest first). Anything that needs you stays in Needs you.
     var watching: [Entry] {
         let deploying = entries.filter { $0.status.kind == .deploying }
         let queued = entries.filter { $0.status.kind == .queued }
             .sorted { ($0.pr.queuePosition ?? .max) < ($1.pr.queuePosition ?? .max) }
-        return deploying + queued
+        let live = entries.filter { isWatching($0) && $0.status.kind != .deploying && $0.status.kind != .queued }
+            .sorted { ($0.pr.liveSince ?? .distantPast) > ($1.pr.liveSince ?? .distantPast) }
+        return deploying + queued + live
     }
-    private func isWatching(_ e: Entry) -> Bool { e.status.kind == .deploying || e.status.kind == .queued }
+    private func isWatching(_ e: Entry) -> Bool {
+        e.status.kind == .deploying || e.status.kind == .queued || (e.pr.isLive && !e.status.needsAttention)
+    }
     var attention: [Entry] { entries.filter(\.status.needsAttention) }
     /// What the menu bar badge counts: "Needs you" plus attention items in groups that aren't quiet.
     var badgeEntries: [Entry] {
