@@ -42,7 +42,11 @@ struct LabelPicker: View {
             list
         }
         .frame(height: 420)
-        .onAppear { fieldFocused = true }
+        // Focus the filter field so typing starts immediately. Belt and braces: menu bar windows can drop a
+        // focus change made in the same update that shows the picker (the list replaced by it had focus).
+        .defaultFocus($fieldFocused, true)
+        .background(FocusFirstTextField())
+        .task { fieldFocused = true }
         .task {
             guard let repo = entry?.pr.repo else { return }
             loading = store.repoLabels[repo] == nil
@@ -166,5 +170,37 @@ private struct LabelRow: View {
             text += piece
         }
         return text
+    }
+}
+
+/// AppKit fallback for SwiftUI focus: once in a window, makes the first editable text field in it the first
+/// responder, unless some text field already is. Checks right away and again shortly after, since the view
+/// that had focus before may still be tearing down.
+private struct FocusFirstTextField: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { Probe() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class Probe: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil else { return }
+            for delay in [0.0, 0.15] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.focusIfNeeded() }
+            }
+        }
+
+        private func focusIfNeeded() {
+            guard let window, (window.firstResponder as? NSTextView)?.isFieldEditor != true,
+                  let field = window.contentView?.firstEditableTextField() else { return }
+            window.makeFirstResponder(field)
+        }
+    }
+}
+
+private extension NSView {
+    func firstEditableTextField() -> NSTextField? {
+        if let field = self as? NSTextField, field.isEditable, !field.isHidden { return field }
+        for subview in subviews { if let field = subview.firstEditableTextField() { return field } }
+        return nil
     }
 }

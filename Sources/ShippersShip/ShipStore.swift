@@ -83,7 +83,6 @@ final class ShipStore {
         Prefs.register()
         if demo {
             viewer = DemoData.viewer
-            repoLabels = DemoData.labels
             tokenSource = .environment
             groups = DemoData.groups
             allEntries = DemoData.pullRequests().map { Entry(pr: $0, status: ShipStatus(for: $0)) }
@@ -100,7 +99,14 @@ final class ShipStore {
     }
 
     func loadLabels(for repo: String, force: Bool = false) async {
-        guard force || repoLabels[repo] == nil, let token else { return }
+        guard force || repoLabels[repo] == nil else { return }
+        if isDemo {
+            // Simulate the network so the picker's loading state gets exercised.
+            try? await Task.sleep(for: .milliseconds(400))
+            repoLabels[repo] = DemoData.labels[repo] ?? []
+            return
+        }
+        guard let token else { return }
         do {
             repoLabels[repo] = try await GitHubClient(token: token).labels(inRepo: repo)
         } catch {

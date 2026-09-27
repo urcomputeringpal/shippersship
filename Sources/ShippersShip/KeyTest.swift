@@ -13,7 +13,9 @@ enum KeyTest {
 
         let host = NSHostingView(rootView: ContentView(store: store, panel: panel)
             .background(Color(nsColor: .windowBackgroundColor)))
-        let window = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 440, height: 760), styleMask: [.titled], backing: .buffered, defer: false)
+        // Like the menu bar extra's window: a borderless, non-activating panel that can still become key.
+        let window = MenuBarLikePanel(contentRect: NSRect(x: 200, y: 200, width: 440, height: 760),
+                                      styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.contentView = host
         window.appearance = NSAppearance(named: .darkAqua)
         NSApp.setActivationPolicy(.regular)
@@ -100,6 +102,10 @@ enum KeyTest {
         panel.selection = .pr(attentionPR)
         await press(Key(characters: "l", code: 37))
         check(panel.labelingID == attentionPR, "L opens the label picker")
+        func fieldFocused() -> Bool { (window.firstResponder as? NSTextView)?.isFieldEditor == true }
+        check(fieldFocused(), "the filter field has keyboard focus right away")
+        try? await Task.sleep(for: .milliseconds(600))
+        check(fieldFocused(), "…and keeps it after the repo's labels finish loading")
         try? await Task.sleep(for: .milliseconds(300))
         await type("dprod")
         try? await Task.sleep(for: .milliseconds(300))
@@ -130,5 +136,8 @@ enum KeyTest {
         static let space = Key(characters: " ", code: 49)
         static let escape = Key(characters: "\u{1b}", code: 53)
     }
+}
+private final class MenuBarLikePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
 #endif
