@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        run: swift build
+      - name: Unit tests
+        run: swift test
+      - name: UI keyboard tests (demo data)
+        run: .build/debug/ShippersShip --keytest
+      - name: Build app bundle
+        run: ./scripts/build-app.sh
