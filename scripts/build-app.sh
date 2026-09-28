@@ -6,8 +6,10 @@ VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' 
 VERSION="${VERSION:-0.0.0}"
 cd "$(dirname "$0")/.."
 
-swift build -c release --product ShippersShip
-BIN="$(swift build -c release --show-bin-path)/ShippersShip"
+# Universal binary: runs on Apple Silicon and Intel Macs.
+ARCHS=(--arch arm64 --arch x86_64)
+swift build -c release --product ShippersShip "${ARCHS[@]}"
+BIN="$(swift build -c release --show-bin-path "${ARCHS[@]}")/ShippersShip"
 APP="build/Shippers Ship.app"
 
 rm -rf "$APP"

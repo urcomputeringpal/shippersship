@@ -18,7 +18,7 @@ The panel is sorted by urgency:
 
 Download the latest `ShippersShip-*.zip` from [Releases](https://github.com/urcomputeringpal/shippersship/releases), unzip it, and move **Shippers Ship.app** to `/Applications`. Each release includes a `.sha256` checksum (`shasum -a 256 -c ShippersShip-*.zip.sha256`). Release builds are ad-hoc signed and not notarized, so the first time you open one, right-click the app → **Open** (or run `xattr -dr com.apple.quarantine "/Applications/Shippers Ship.app"`).
 
-Or build it yourself. You'll need macOS 14+ and Xcode 16+:
+Releases are universal, so they run on both Apple Silicon and Intel Macs (macOS 14+). Or build it yourself with Xcode 16+:
 
 ```bash
 ./scripts/build-app.sh --install
