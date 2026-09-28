@@ -223,3 +223,14 @@ func liveSnapshot() async throws {
     livePR.liveEnvironments = ["prod"]
     #expect(ShipStatus(for: livePR).headline == "Live on prod")
 }
+
+@Test func decodesDraftMutationPayloads() throws {
+    let converted: GitHubClient.DraftBody = try GitHubClient.decode(Data(#"{"data":{"convertPullRequestToDraft":{"pullRequest":{"isDraft":true}}}}"#.utf8))
+    #expect(converted.convertPullRequestToDraft?.pullRequest?.isDraft == true)
+    let ready: GitHubClient.DraftBody = try GitHubClient.decode(Data(#"{"data":{"markPullRequestReadyForReview":{"pullRequest":{"isDraft":false}}}}"#.utf8))
+    #expect(ready.markPullRequestReadyForReview?.pullRequest?.isDraft == false)
+    // GraphQL errors (e.g. no permission) surface instead of a silent no-op.
+    #expect(throws: GitHubClient.ClientError.self) {
+        let _: GitHubClient.DraftBody = try GitHubClient.decode(Data(#"{"data":{"convertPullRequestToDraft":null},"errors":[{"message":"nope"}]}"#.utf8))
+    }
+}

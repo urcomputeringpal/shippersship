@@ -98,6 +98,13 @@ enum KeyTest {
         check(!expanded(groupID), "← collapses the group")
         shot("2-group-collapsed")
 
+        print("Draft")
+        let drafting = store.authored.first!.id
+        await store.setDraft(true, on: drafting)
+        check(store.drafts.contains { $0.id == drafting } && !store.authored.contains { $0.id == drafting }, "Convert to Draft moves a PR into Drafts")
+        await store.setDraft(false, on: drafting)
+        check(store.authored.contains { $0.id == drafting }, "Mark Ready for Review moves it back")
+
         print("Label picker")
         panel.selection = .pr(attentionPR)
         await press(Key(characters: "l", code: 37))

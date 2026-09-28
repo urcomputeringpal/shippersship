@@ -109,7 +109,7 @@ public struct PullRequest: Identifiable, Hashable, Sendable {
     public let repo: String
     public let author: String
     public var labels: [PRLabel]
-    public let isDraft: Bool
+    public var isDraft: Bool
     /// The PR branch's current commit.
     public let headOID: String?
     /// OPEN, MERGED, or CLOSED

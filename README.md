@@ -47,6 +47,10 @@ If you already use `gh`, there's nothing to set up. Adding and removing labels n
 | **esc** | Clear the selection | Close |
 | **⌘R** | Refresh | |
 
+## Right-click menu
+
+Right-click a PR to open it or its checks, jump to a failing check or deployment, copy its link, edit labels, or move it to a group. On your own open PRs, you can also **Convert to Draft** or **Mark Ready for Review** (not available while a PR is in the merge queue).
+
 ## Labels
 
 Select a PR and press **L** (or right-click → **Labels…**). Labels already on the PR are listed first. Type to fuzzy-filter (`dprod` finds `deploy:production`), then press **⏎** to add or remove the highlighted one. The filter clears after each change so you can go straight to the next label.

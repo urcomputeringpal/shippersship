@@ -132,11 +132,32 @@ final class ShipStore {
         }
     }
 
-    private func setLabels(_ labels: [PRLabel], on prID: String) {
+    // MARK: - Draft
+
+    /// Converts a PR to a draft or marks it ready for review. The UI updates immediately and is
+    /// reverted if GitHub refuses (e.g. a PR in the merge queue can't become a draft).
+    func setDraft(_ draft: Bool, on prID: String) async {
+        guard let entry = entry(id: prID), entry.pr.isDraft != draft else { return }
+        update(prID) { $0.isDraft = draft }
+        guard !isDemo, let token else { return }
+        do {
+            let result = try await GitHubClient(token: token).setDraft(draft, pullRequestID: prID)
+            update(prID) { $0.isDraft = result }
+        } catch {
+            update(prID) { $0.isDraft = !draft }
+            errorMessage = "Couldn't \(draft ? "convert to draft" : "mark ready for review"): \(error.localizedDescription)"
+        }
+    }
+
+    private func update(_ prID: String, _ change: (inout PullRequest) -> Void) {
         guard let index = allEntries.firstIndex(where: { $0.id == prID }) else { return }
         var pr = allEntries[index].pr
-        pr.labels = labels
+        change(&pr)
         allEntries[index] = Entry(pr: pr, status: ShipStatus(for: pr))
+    }
+
+    private func setLabels(_ labels: [PRLabel], on prID: String) {
+        update(prID) { $0.labels = labels }
     }
 
     // MARK: - Groups

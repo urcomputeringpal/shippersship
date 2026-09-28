@@ -230,6 +230,14 @@ struct PRMenu: View {
             panel.selection = .pr(pr.id)
             panel.labelingID = pr.id
         }
+        if pr.isOpen && pr.relations.contains(.authored) {
+            if pr.isDraft {
+                Button("Mark Ready for Review") { Task { await store.setDraft(false, on: pr.id) } }
+            } else {
+                Button("Convert to Draft") { Task { await store.setDraft(true, on: pr.id) } }
+                    .disabled(pr.isInMergeQueue)
+            }
+        }
         Button("Open Checks") { openWeb(pr.checksURL) }
         if !pr.checks.failed.isEmpty {
             Menu("Failing Checks") {
