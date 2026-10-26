@@ -131,6 +131,10 @@ public struct GitHubClient: Sendable {
       rateLimit { remaining resetAt }
       search(query: $q, type: ISSUE, first: 25) { nodes { ...PR } }
     }
+    """ + "\n" + fragments
+
+    /// `...PR` and what it needs, for any query that fetches pull requests.
+    static let fragments = """
     fragment Dep on Deployment {
       environment state createdAt updatedAt commitOid
       latestStatus { state environmentUrl logUrl createdAt }

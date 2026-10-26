@@ -90,6 +90,7 @@ Refresh interval, how far back to show landed PRs, hiding open PRs with no recen
 swift build
 swift test                                      # filters, status logic, fuzzy matching, decoding
 SHIPPERS_SHIP_LIVE=1 swift test                 # also prints a live snapshot of your PRs
+SHIPPERS_SHIP_WALL_LIVE=1 swift test --filter liveInstallation   # checks the wall's GitHub App (docs/wall-setup.md)
 .build/debug/ShippersShip --keytest [dir]       # drives the UI with real key events against demo data
 .build/debug/ShippersShip --snapshot out.png --demo   # renders the panel (this is how docs/screenshot.png is made)
 ```
